@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>De la atención a los agentes · Modelos de lenguaje 2017–2026</title>
+<meta name="description" content="Infografía interactiva: la historia de los modelos de lenguaje desde el Transformer hasta los agentes, la brecha entre modelos abiertos y cerrados, las perillas que los controlan y el debate del loro estocástico.">
+<meta property="og:title" content="De la atención a los agentes">
+<meta property="og:description" content="Modelos de lenguaje 2017–2026: una infografía interactiva.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23141414'/><circle cx='11' cy='16' r='4' fill='%232a78d6'/><circle cx='21' cy='16' r='4' fill='%23eb6834'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav class="topbar" aria-label="Secciones">
+  <a class="brand" href="#top">LLM <span>2017 → 2026</span></a>
+  <div class="nav-links">
+    <a href="#linea">01 Línea de tiempo</a>
+    <a href="#brecha">02 La brecha</a>
+    <a href="#perillas">03 Perillas</a>
+    <a href="#loro">04 El loro</a>
+  </div>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar tema claro/oscuro">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+  </button>
+</nav>
+
+<main id="top">
+
+<header class="hero wrap">
+  <div class="kicker">Infografía interactiva · Modelos de lenguaje</div>
+  <h1>De la <em>atención</em><br>a los agentes</h1>
+  <div class="era-strip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <p class="lede">Nueve años separan un artículo de Google sobre traducción automática de los sistemas que hoy programan, razonan y operan computadores durante horas. Explora quién entró al juego, cómo se cerró la brecha entre modelos abiertos y cerrados, qué perillas controlan su comportamiento y qué quedó del <em>loro estocástico</em>.</p>
+  <div class="stats">
+    <div class="stat"><div class="n">2017</div><div class="l"><em>Attention Is All You Need</em>: 8 autores de Google proponen el Transformer.</div></div>
+    <div class="stat"><div class="n">175<small> mil M</small></div><div class="l">Parámetros de GPT-3: la escala sola desbloquea habilidades.</div></div>
+    <div class="stat"><div class="n">~2<small> meses</small></div><div class="l">Lo que tardó ChatGPT en llegar a 100 millones de usuarios (estimación UBS).</div></div>
+    <div class="stat"><div class="n">8,0<small>%</small>→1,7<small>%</small></div><div class="l">Ventaja del mejor cerrado sobre el mejor abierto en Chatbot Arena, 2024→2025.</div></div>
+  </div>
+</header>
+
+<!-- 01 TIMELINE -->
+<section id="linea" class="section wrap">
+  <div class="sec-head">
+    <span class="sec-num">01</span>
+    <div>
+      <h2>La línea de tiempo</h2>
+      <p>Seis etapas, 29 hitos. Pulsa un punto o una tarjeta para ver por qué importa; filtra por tipo de modelo.</p>
+    </div>
+  </div>
+
+  <div class="filters" role="group" aria-label="Filtrar hitos">
+    <button class="chip is-active" data-filter="all" type="button">Todos</button>
+    <button class="chip" data-filter="open" type="button"><span class="tag open">abierto</span> pesos descargables</button>
+    <button class="chip" data-filter="closed" type="button"><span class="tag">cerrado</span> solo API / app</button>
+    <button class="chip" data-filter="reasoning" type="button"><span class="tag reasoning">razonador</span> piensa antes de responder</button>
+    <button class="chip" data-filter="multimodal" type="button"><span class="tag">multimodal</span> texto + imagen / audio</button>
+  </div>
+
+  <div class="rail-wrap"><svg id="rail" class="rail" role="img" aria-label="Eje temporal 2017–2026 con los hitos"></svg></div>
+  <p class="rail-hint">Desliza el eje hacia los lados →</p>
+
+  <div class="timeline-layout">
+    <div id="eras" class="eras"></div>
+    <aside class="detail" id="detail" aria-live="polite"></aside>
+  </div>
+</section>
+
+<!-- 02 PLAYERS + GAP -->
+<section id="brecha" class="section wrap">
+  <div class="sec-head">
+    <span class="sec-num">02</span>
+    <div>
+      <h2>Los jugadores y la brecha</h2>
+      <p>Tras ChatGPT, la frontera dejó de ser de un solo laboratorio, y la distancia entre el líder y sus perseguidores se encogió.</p>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <h3>Quién entró y cuándo</h3>
+      <p class="sub">Año de fundación del laboratorio (o del equipo que creó su familia de modelos)</p>
+      <svg id="players-axis" class="players-axis" role="img" aria-label="Año de entrada de cada laboratorio"></svg>
+      <div id="roster" class="roster"></div>
+      <p class="note"><b>2023 fue el año de entrada:</b> seis de estos nueve equipos nacieron o lanzaron su primer LLM en los doce meses posteriores a ChatGPT.</p>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>La brecha se cierra</h3>
+          <p class="sub">Diferencia entre el líder y su perseguidor · antes y después</p>
+        </div>
+        <button class="btn" id="gap-play" type="button">▶ Reproducir</button>
+      </div>
+      <div class="legend"><span><i class="dot before"></i>antes</span><span><i class="dot after"></i>después</span></div>
+      <div id="gaps"></div>
+      <p class="note">Fuente: Stanford HAI, <em>AI Index 2025</em>. En 2026 el mejor modelo abierto (DeepSeek V4) se ubica, por estimación propia, a 3–6 meses de la frontera cerrada.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 03 DIALS -->
+<section id="perillas" class="section wrap">
+  <div class="sec-head">
+    <span class="sec-num">03</span>
+    <div>
+      <h2>Las perillas</h2>
+      <p>El modelo no elige una palabra: calcula una probabilidad para cada candidata. Estos parámetros deciden cómo se escoge entre ellas.</p>
+    </div>
+  </div>
+
+  <div class="card playground">
+    <div class="pg-controls">
+      <p class="prompt">Siguiente palabra para <code>El cielo es ___</code></p>
+      <label class="slider">
+        <span class="sl-head"><b>Temperatura</b><output id="t-out">1,0</output></span>
+        <input type="range" id="t" min="0.05" max="2" step="0.05" value="1">
+        <span class="sl-hint">Baja: casi siempre la favorita. Alta: más diversidad y más rarezas.</span>
+      </label>
+      <label class="slider">
+        <span class="sl-head"><b>top-p</b><output id="p-out">1,00</output></span>
+        <input type="range" id="p" min="0.1" max="1" step="0.01" value="1">
+        <span class="sl-hint">Solo entran las candidatas que, sumadas, alcanzan la probabilidad p.</span>
+      </label>
+      <label class="slider">
+        <span class="sl-head"><b>top-k</b><output id="k-out">8</output></span>
+        <input type="range" id="k" min="1" max="8" step="1" value="8">
+        <span class="sl-hint">Solo las k candidatas más probables entran al sorteo.</span>
+      </label>
+      <div class="formula">p<sub>i</sub> = e<sup>z<sub>i</sub>/T</sup> / Σ<sub>j</sub> e<sup>z<sub>j</sub>/T</sup></div>
+      <p class="tiny">z son los <em>logits</em>: la puntuación cruda de cada candidata. Dividir por T antes del <em>softmax</em> estira o encoge las diferencias.</p>
+    </div>
+    <div class="pg-output">
+      <div id="bars" class="bars"></div>
+      <div class="sample-row">
+        <button class="btn primary" id="sample" type="button">Muestrear 12 veces</button>
+        <div id="samples" class="samples" aria-live="polite"></div>
+      </div>
+      <div class="callout"><b>Regla práctica:</b> temperatura baja (0–0,3) para extraer datos, clasificar o programar; media (0,7–1) para conversar; alta (&gt;1) para lluvia de ideas, con riesgo de incoherencia.</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>Esfuerzo de razonamiento</h3>
+      <p class="sub">En los modelos razonadores, cuántos tokens de «pensamiento» se gastan antes de responder. Simulación ilustrativa.</p>
+      <div class="segmented" role="radiogroup" aria-label="Nivel de esfuerzo">
+        <button role="radio" aria-checked="false" data-effort="low" type="button">low</button>
+        <button role="radio" aria-checked="true" data-effort="medium" type="button">medium</button>
+        <button role="radio" aria-checked="false" data-effort="high" type="button">high</button>
+      </div>
+      <div class="effort-box">
+        <p class="q" id="effort-q"></p>
+        <ol class="thinking" id="effort-thinking"></ol>
+        <div class="answer" id="effort-answer"></div>
+        <div class="meter"><span>tokens de pensamiento</span><div class="meter-bar"><div id="effort-meter"></div></div><span id="effort-meta"></span></div>
+      </div>
+      <div class="callout"><b>El cambio de 2024–2025:</b> en los razonadores la temperatura suele venir fija o se ignora. La perilla que importa pasa a ser el esfuerzo: cuánto piensa, no cuán al azar elige.</div>
+    </div>
+    <div class="card">
+      <h3>Ventana de contexto</h3>
+      <p class="sub">Cuánto texto «ve» el modelo a la vez. Creció ~2.000× en seis años (escala logarítmica).</p>
+      <div id="context" class="context"></div>
+      <div class="callout"><b>Para dimensionar:</b> 1 M de tokens equivale aproximadamente a 750.000 palabras en inglés, varias novelas largas a la vez.</div>
+      <div class="knob-list">
+        <div><b>max tokens</b><span>Límite de longitud de la respuesta, y por tanto de su costo.</span></div>
+        <div><b>presupuesto de pensamiento</b><span>Versión numérica del esfuerzo: un tope explícito de tokens para razonar.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 PARROT -->
+<section id="loro" class="section wrap">
+  <div class="sec-head">
+    <span class="sec-num">04</span>
+    <div>
+      <h2>El loro estocástico: ¿murió?</h2>
+      <p>Activa cada evidencia y mira hacia dónde se inclina el debate.</p>
+    </div>
+  </div>
+
+  <div class="parrot">
+    <div class="card thesis">
+      <div class="eyebrow">La tesis · 2021</div>
+      <h3>«Un loro estocástico»</h3>
+      <blockquote>Un sistema que cose secuencias de formas lingüísticas observadas en sus datos, según información probabilística, sin ninguna referencia al significado.</blockquote>
+      <p>Bender, Gebru, McMillan-Major y Mitchell (FAccT 2021). El artículo advertía además de sesgos heredados, costo ambiental y la <b>ilusión de comprensión</b> en quien lee.</p>
+      <p class="aside">Diciembre de 2022, Sam Altman: <em>«i am a stochastic parrot, and so r u»</em>.</p>
+    </div>
+    <div class="scale-box card">
+      <svg id="balance" class="balance" viewBox="0 0 420 210" role="img" aria-label="Balanza del debate"></svg>
+      <div class="scale-cols">
+        <div><div class="eyebrow">A favor de la tesis</div><h4>Lo que sigue vivo</h4><div id="ev-parrot" class="ev-list"></div></div>
+        <div><div class="eyebrow">En contra de la tesis</div><h4>Golpes al loro</h4><div id="ev-beyond" class="ev-list"></div></div>
+      </div>
+      <button class="btn" id="ev-all" type="button">Activar todas</button>
+    </div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+</section>
+
+</main>
+
+<footer class="site-footer wrap"><div class="footer">
+  <div>
+    <div class="eyebrow">Fuentes</div>
+    <ul id="sources" class="sources"></ul>
+    <p class="tiny">Las fechas de 2026 provienen de anuncios y prensa especializada, que no siempre coinciden entre sí. Las cifras de benchmarks de DeepSeek V4 son autorreportadas.</p>
+  </div>
+  <div class="sign">Grafics Lab · octubre 2026</div>
+</div></footer>
+
+<div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
