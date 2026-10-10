@@ -1,10 +1,13 @@
-import { ERAS, TAGS, EVENTS, PLAYERS, GAPS, CANDIDATES, EFFORT, CONTEXT, EVIDENCE, SOURCES } from './data.js';
+import { ERAS, EVENTS, GAPS, CANDIDATES, EVIDENCE, SOURCES, PARAMS, WAU, WAU_SOURCES, WAU_NOTE, COST } from './data.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 1) => value.toLocaleString('es', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const eraColor = (eraId) => `var(--e${eraId})`;
+const int = (value) => value.toLocaleString('es');
+const eraVar = (id) => `var(--e${id})`;
+const MONTH_FMT = new Intl.DateTimeFormat('es', { month: 'short', year: 'numeric' });
+const canHover = window.matchMedia('(hover: hover)').matches;
 
 function svgEl(tag, attrs = {}, text) {
   const node = document.createElementNS(SVG_NS, tag);
@@ -13,12 +16,10 @@ function svgEl(tag, attrs = {}, text) {
   return node;
 }
 
-function htmlEl(tag, { className, text, attrs = {} } = {}, children = []) {
+function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
-  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
-  node.append(...children);
   return node;
 }
 
@@ -30,10 +31,23 @@ function onResize(callback) {
   });
 }
 
+const toMonths = (date) => {
+  const [year, month, day] = date.split('-').map(Number);
+  return year * 12 + (month - 1) + (day ? (day - 1) / 31 : 0.5);
+};
+const yearFrac = (date) => {
+  const [year, month] = date.split('-').map(Number);
+  return year + (month - 1) / 12 + 0.04;
+};
+const monthLabel = (date) => {
+  const [year, month] = date.split('-').map(Number);
+  return MONTH_FMT.format(new Date(year, month - 1, 1));
+};
+
 /* ───────── tooltip ───────── */
 const tooltip = $('#tooltip');
 function showTooltip(event, title, detail) {
-  tooltip.replaceChildren(htmlEl('b', { text: title }), htmlEl('span', { text: detail }));
+  tooltip.replaceChildren(el('b', null, title), el('span', null, detail));
   tooltip.hidden = false;
   const rect = event.currentTarget?.getBoundingClientRect?.();
   const x = event.clientX ?? (rect ? rect.left + rect.width / 2 : 0);
@@ -50,258 +64,362 @@ function bindTooltip(node, title, detail) {
   node.addEventListener('blur', hideTooltip);
 }
 
-/* ───────── theme ───────── */
-function initTheme() {
-  const root = document.documentElement;
-  try {
-    const saved = localStorage.getItem('theme');
-    if (saved) root.dataset.theme = saved;
-  } catch { /* storage unavailable: follow the OS */ }
-  $('#theme-toggle').addEventListener('click', () => {
-    const isDark = root.dataset.theme
-      ? root.dataset.theme === 'dark'
-      : matchMedia('(prefers-color-scheme: dark)').matches;
-    root.dataset.theme = isDark ? 'light' : 'dark';
-    try { localStorage.setItem('theme', root.dataset.theme); } catch { /* ignore */ }
-    redrawCharts();
-  });
-}
+/* ───────── timeline ───────── */
+const TL_START = toMonths('2017-01');
+const TL_END = toMonths('2027-01');
+const tlPct = (date) => ((toMonths(date) - TL_START) / (TL_END - TL_START)) * 100;
+const isNarrow = () => window.matchMedia('(max-width: 719.98px)').matches;
 
-/* ───────── 01 timeline ───────── */
-const timeline = { filter: 'all', selected: 0 };
-const toMonths = (date) => {
-  const [year, month] = date.split('-').map(Number);
-  return year * 12 + (month - 1) + (date.split('-')[2] ? Number(date.split('-')[2]) / 31 : 0.5);
-};
-const isVisible = (event) => timeline.filter === 'all' || event.tags.includes(timeline.filter);
+let filter = 'all';
+let openAnchor = null;
 
-function renderEras() {
-  const container = $('#eras');
-  container.replaceChildren();
-  for (const era of ERAS) {
-    const meta = htmlEl('div', { className: 'era-meta' }, [
-      htmlEl('div', { className: 'era-num', text: `Etapa ${era.id}` }),
-      htmlEl('div', { className: 'era-name', text: era.name }),
-      htmlEl('div', { className: 'era-years', text: era.years }),
-      htmlEl('div', { className: 'era-thesis', text: era.thesis }),
-    ]);
-    const events = htmlEl('div', { className: 'events' });
-    EVENTS.forEach((event, index) => {
-      if (event.era !== era.id) return;
-      const tags = htmlEl('div', { className: 'tags' }, event.tags.map((tag) =>
-        htmlEl('span', { className: `tag ${tag}`, text: TAGS[tag] })));
-      const date = htmlEl('div', { className: 'd' }, [document.createTextNode(event.label)]);
-      if (event.key) date.append(htmlEl('span', { className: 'star', text: '★ clave', attrs: { 'aria-label': 'hito clave' } }));
-      const card = htmlEl('button', { className: `ev${event.key ? ' key' : ''}`, attrs: { type: 'button', 'data-index': index } }, [
-        date,
-        htmlEl('h4', { text: event.title }),
-        htmlEl('p', { text: event.text }),
-      ]);
-      if (event.tags.length) card.append(tags);
-      card.addEventListener('click', () => selectEvent(index));
-      events.append(card);
-    });
-    const section = htmlEl('section', { className: 'era', attrs: { style: `--c:${eraColor(era.id)}`, 'data-era': era.id } }, [meta, events]);
-    container.append(section);
-  }
-}
-
-function drawRail() {
-  const svg = $('#rail');
-  svg.replaceChildren();
-  const width = Math.max(760, svg.clientWidth);
-  const height = 118, pad = 18, mid = 50;
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  const start = toMonths('2017-01'), end = toMonths('2027-01');
-  const x = (date) => pad + ((toMonths(date) - start) / (end - start)) * (width - pad * 2);
-
-  for (const era of ERAS) {
-    const x0 = x(era.from), x1 = x(era.to);
-    svg.append(svgEl('rect', { x: x0, y: mid - 26, width: Math.max(0, x1 - x0 - 2), height: 52, rx: 6, fill: eraColor(era.id), 'fill-opacity': 0.13 }));
-    svg.append(svgEl('rect', { x: x0, y: mid - 26, width: Math.max(0, x1 - x0 - 2), height: 3, rx: 1.5, fill: eraColor(era.id) }));
-  }
-  svg.append(svgEl('line', { x1: pad, x2: width - pad, y1: mid, y2: mid, stroke: 'var(--border-strong)', 'stroke-width': 1 }));
-  for (let year = 2017; year <= 2026; year++) {
-    const tx = x(`${year}-01`);
-    svg.append(svgEl('line', { x1: tx, x2: tx, y1: mid + 26, y2: mid + 32, stroke: 'var(--ink4)' }));
-    svg.append(svgEl('text', { x: tx + 3, y: mid + 46, 'font-size': 12, 'font-family': 'DM Mono', fill: 'var(--ink3)' }, String(year)));
-  }
-
-  const laneOffsets = [0, -15, 15];
-  const laneLastX = [-Infinity, -Infinity, -Infinity];
-  EVENTS.forEach((event, index) => {
-    const cx = x(event.date);
-    const lane = laneOffsets.findIndex((_, laneIndex) => cx - laneLastX[laneIndex] > 15);
-    const chosenLane = lane === -1 ? 0 : lane;
-    laneLastX[chosenLane] = cx;
-    const group = svgEl('g', { class: 'ev-dot', tabindex: 0, role: 'button', 'aria-label': `${event.label}: ${event.title}`, 'data-index': index });
-    group.append(svgEl('circle', { cx, cy: mid + laneOffsets[chosenLane], r: 14, fill: 'transparent' }));
-    group.append(svgEl('circle', { class: 'mark', cx, cy: mid + laneOffsets[chosenLane], r: event.key ? 7 : 5, fill: eraColor(event.era), stroke: 'var(--surface)', 'stroke-width': 2 }));
-    group.addEventListener('click', () => selectEvent(index));
-    group.addEventListener('keydown', (keyEvent) => {
-      if (keyEvent.key === 'Enter' || keyEvent.key === ' ') { keyEvent.preventDefault(); selectEvent(index); }
-    });
-    bindTooltip(group, event.title, `${event.label} · ${event.who}`);
-    svg.append(group);
-  });
-  applyFilter();
-}
-
-function renderDetail() {
-  const event = EVENTS[timeline.selected];
-  const detail = $('#detail');
-  detail.style.setProperty('--c', eraColor(event.era));
-  const era = ERAS.find((candidate) => candidate.id === event.era);
-  const children = [
-    htmlEl('div', { className: 'd', text: `${event.label} · Etapa ${era.id}: ${era.name}` }),
-    htmlEl('h3', { text: event.title }),
-    htmlEl('div', { className: 'who', text: event.who }),
-    htmlEl('p', { text: event.text }),
-    htmlEl('div', { className: 'why-label', text: 'Por qué importa' }),
-    htmlEl('p', { className: 'why', text: event.why }),
-  ];
-  if (event.tags.length) {
-    children.push(htmlEl('div', { className: 'tags' }, event.tags.map((tag) => htmlEl('span', { className: `tag ${tag}`, text: TAGS[tag] }))));
-  }
+function popMarkup(event) {
+  const pop = el('div', 'tl-pop');
+  pop.hidden = true;
+  pop.append(el('p', 'tp-date', event.label), el('p', 'tp-title', event.title), el('p', 'tp-text', event.text));
   if (event.src) {
-    children.push(htmlEl('a', { className: 'src', text: 'Ver fuente ↗', attrs: { href: event.src, target: '_blank', rel: 'noopener' } }));
+    const link = el('a', 'tp-src', 'fuente ↗');
+    link.href = event.src;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    pop.append(link);
   }
-  const prev = htmlEl('button', { className: 'btn', text: '← Anterior', attrs: { type: 'button' } });
-  const next = htmlEl('button', { className: 'btn', text: 'Siguiente →', attrs: { type: 'button' } });
-  prev.addEventListener('click', () => stepEvent(-1));
-  next.addEventListener('click', () => stepEvent(1));
-  children.push(htmlEl('div', { className: 'nav' }, [prev, next]));
-  detail.replaceChildren(...children);
+  return pop;
 }
 
-function stepEvent(direction) {
-  const visible = EVENTS.map((event, index) => (isVisible(event) ? index : -1)).filter((index) => index >= 0);
-  const position = visible.indexOf(timeline.selected);
-  const nextPosition = (position + direction + visible.length) % visible.length;
-  selectEvent(visible[nextPosition]);
+function anchorFor(event, index) {
+  const anchor = el('div', 'tl-anchor');
+  const dot = el('button', 'tl-dot');
+  dot.type = 'button';
+  dot.dataset.index = index;
+  dot.style.setProperty('--c', eraVar(event.era));
+  if (event.key) dot.classList.add('is-key');
+  dot.setAttribute('aria-label', `${event.label}: ${event.title}`);
+  dot.setAttribute('aria-expanded', 'false');
+  anchor.append(dot, popMarkup(event));
+  return anchor;
 }
 
-function selectEvent(index) {
-  timeline.selected = index;
-  $$('.ev').forEach((card) => card.classList.toggle('is-selected', Number(card.dataset.index) === index));
-  $$('#rail .ev-dot').forEach((dot) => dot.classList.toggle('is-selected', Number(dot.dataset.index) === index));
-  renderDetail();
+function renderHorizontal(body) {
+  const wrap = el('div', 'tl-hwrap');
+  const erans = el('div', 'tl-erans');
+  const plot = el('div', 'tl-plot');
+  const xaxis = el('div', 'tl-xaxis');
+  ERAS.forEach((era) => {
+    const band = el('div', 'tl-band');
+    band.style.left = `${tlPct(era.from)}%`;
+    band.style.width = `${Math.max(0, tlPct(era.to) - tlPct(era.from))}%`;
+    band.style.setProperty('--c', eraVar(era.id));
+    plot.append(band);
+    const number = el('p', 'tl-eran', String(era.id));
+    number.style.left = `${(tlPct(era.from) + tlPct(era.to)) / 2}%`;
+    erans.append(number);
+  });
+  plot.append(el('div', 'tl-axis'));
+  for (let year = 2017; year <= 2026; year++) {
+    const tick = el('p', 'tl-tick', String(year));
+    tick.style.left = `${tlPct(`${year}-01`)}%`;
+    xaxis.append(tick);
+  }
+  wrap.append(erans, plot, xaxis);
+  body.append(wrap);
+
+  const width = plot.clientWidth || 1000;
+  const maxLanes = 5, laneGap = 40;
+  const offsets = Array.from({ length: maxLanes }, (_, k) => (k - (maxLanes - 1) / 2) * laneGap);
+  const laneOrder = offsets.map((_, k) => k).sort((a, b) => Math.abs(offsets[a]) - Math.abs(offsets[b]));
+  const lastX = offsets.map(() => -Infinity);
+  EVENTS.forEach((event, index) => {
+    const cx = (tlPct(event.date) / 100) * width;
+    let lane = laneOrder.find((k) => cx - lastX[k] >= 40);
+    if (lane === undefined) lane = laneOrder[0];
+    lastX[lane] = cx;
+    const anchor = anchorFor(event, index);
+    anchor.style.left = `${tlPct(event.date)}%`;
+    anchor.style.top = `calc(50% + ${offsets[lane]}px)`;
+    plot.append(anchor);
+  });
+}
+
+function renderVertical(body) {
+  const wrap = el('div', 'tl-vwrap');
+  ERAS.forEach((era) => {
+    const block = el('section', 'tve');
+    block.style.setProperty('--c', eraVar(era.id));
+    const head = el('div', 'tve-head');
+    head.append(el('span', 'tve-num', String(era.id)), el('h3', 'tve-name', era.name), el('span', 'tve-yr', era.years));
+    block.append(head);
+    const list = el('ol', 'tve-list');
+    EVENTS.filter((event) => event.era === era.id).forEach((event) => {
+      const index = EVENTS.indexOf(event);
+      const item = el('li', 'tve-item');
+      item.append(anchorFor(event, index), el('p', 'tve-date', event.label), el('p', 'tve-title', event.title));
+      list.append(item);
+    });
+    block.append(list);
+    wrap.append(block);
+  });
+  body.append(wrap);
+}
+
+function clampPop(pop) {
+  pop.style.setProperty('--dx', '0px');
+  const bounds = $('#timeline').getBoundingClientRect();
+  const rect = pop.getBoundingClientRect();
+  let dx = 0;
+  if (rect.left < bounds.left + 8) dx = bounds.left + 8 - rect.left;
+  else if (rect.right > bounds.right - 8) dx = bounds.right - 8 - rect.right;
+  pop.style.setProperty('--dx', `${Math.round(dx)}px`);
+}
+
+function closePop() {
+  if (!openAnchor) return;
+  $('.tl-dot', openAnchor).setAttribute('aria-expanded', 'false');
+  $('.tl-pop', openAnchor).hidden = true;
+  openAnchor = null;
+}
+function closePopIf(anchor) {
+  if (openAnchor === anchor) closePop();
+}
+
+function openPop(anchor) {
+  if (openAnchor && openAnchor !== anchor) closePop();
+  const pop = $('.tl-pop', anchor);
+  pop.hidden = false;
+  $('.tl-dot', anchor).setAttribute('aria-expanded', 'true');
+  openAnchor = anchor;
+  clampPop(pop);
+}
+
+function bindDots() {
+  $$('#tl-body .tl-anchor').forEach((anchor) => {
+    const dot = $('.tl-dot', anchor);
+    dot.addEventListener('click', (event) => { event.preventDefault(); openPop(anchor); });
+    dot.addEventListener('focus', () => openPop(anchor));
+    if (canHover) {
+      anchor.addEventListener('pointerenter', () => openPop(anchor));
+      anchor.addEventListener('pointerleave', () => closePopIf(anchor));
+    }
+    anchor.addEventListener('focusout', () => {
+      requestAnimationFrame(() => { if (!anchor.contains(document.activeElement)) closePopIf(anchor); });
+    });
+  });
 }
 
 function applyFilter() {
-  $$('.ev').forEach((card) => card.classList.toggle('is-hidden', !isVisible(EVENTS[card.dataset.index])));
-  $$('.era').forEach((era) => era.classList.toggle('is-empty', !$$('.ev:not(.is-hidden)', era).length));
-  $$('#rail .ev-dot').forEach((dot) => dot.classList.toggle('is-dim', !isVisible(EVENTS[dot.dataset.index])));
-  if (!isVisible(EVENTS[timeline.selected])) {
-    timeline.selected = EVENTS.findIndex(isVisible);
-  }
-  selectEvent(timeline.selected);
+  $$('#tl-body .tl-dot').forEach((dot) => {
+    const event = EVENTS[Number(dot.dataset.index)];
+    dot.classList.toggle('is-dim', filter !== 'all' && !event.tags.includes(filter));
+  });
 }
 
-function initTimeline() {
-  renderEras();
-  drawRail();
-  $$('.filters .chip').forEach((chip) => chip.addEventListener('click', () => {
-    timeline.filter = chip.dataset.filter;
-    $$('.filters .chip').forEach((other) => other.classList.toggle('is-active', other === chip));
-    applyFilter();
+function renderTimeline() {
+  closePop();
+  const body = $('#tl-body');
+  const narrow = isNarrow();
+  body.replaceChildren();
+  body.classList.toggle('tl-v', narrow);
+  body.classList.toggle('tl-h', !narrow);
+  if (narrow) renderVertical(body);
+  else renderHorizontal(body);
+  bindDots();
+  applyFilter();
+}
+
+/* ───────── eras list ───────── */
+function renderEras() {
+  $('#eras').replaceChildren(...ERAS.map((era) => {
+    const item = el('div', 'era-item');
+    const swatch = el('span', 'era-sw');
+    swatch.style.setProperty('--c', eraVar(era.id));
+    const text = el('div');
+    text.append(el('p', 'era-name', era.name), el('p', 'era-years', era.years), el('p', 'era-thesis', era.thesis));
+    item.append(swatch, text);
+    return item;
   }));
 }
 
-/* ───────── 02 players + gaps ───────── */
-function drawPlayersAxis() {
-  const svg = $('#players-axis');
-  svg.replaceChildren();
-  const width = svg.clientWidth || 480, height = 96, pad = 24, base = 74;
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  const x = (year) => pad + ((year - 2009) / (2024.5 - 2009)) * (width - pad * 2);
-  svg.append(svgEl('line', { x1: pad, x2: width - pad, y1: base, y2: base, stroke: 'var(--border-strong)' }));
-  for (const year of [2010, 2015, 2020, 2023]) {
-    svg.append(svgEl('text', { x: x(year), y: base + 18, 'font-size': 11, 'font-family': 'DM Mono', fill: 'var(--ink3)', 'text-anchor': 'middle' }, String(year)));
-  }
-  const chatgpt = x(2022.9);
-  svg.append(svgEl('line', { x1: chatgpt, x2: chatgpt, y1: 6, y2: base, stroke: 'var(--ink3)', 'stroke-dasharray': '3 3' }));
-  svg.append(svgEl('text', { x: chatgpt - 6, y: 14, 'font-size': 11, fill: 'var(--ink3)', 'text-anchor': 'end' }, 'ChatGPT ▸'));
+/* ───────── charts ───────── */
+const CHART_DRAW = { params: drawParams, wau: drawWau, cost: drawCost, gap: drawGap };
 
-  const stacks = new Map();
-  for (const player of PLAYERS) {
-    const level = stacks.get(player.year) ?? 0;
-    stacks.set(player.year, level + 1);
-    const cx = x(player.year + 0.5), cy = base - 9 - level * 11;
-    const dot = svgEl('circle', { cx, cy, r: 5, fill: 'var(--ink)', stroke: 'var(--surface)', 'stroke-width': 2, tabindex: 0 });
-    bindTooltip(dot, player.name, `${player.year} · ${player.models}`);
-    svg.append(dot);
-    if (player.year !== 2023) {
-      svg.append(svgEl('text', { x: cx, y: cy - 10, 'font-size': 11.5, fill: 'var(--ink2)', 'text-anchor': 'middle' }, player.name.split(' ')[0]));
+function renderCharts() {
+  const cards = [
+    { key: 'params', title: 'Parámetros por modelo',
+      src: 'Parámetros totales en millones, escala logarítmica (cada marca es ×10). El hueco punteado son los parámetros activos de una mezcla de expertos.' },
+    { key: 'wau', title: 'Usuarios semanales de ChatGPT',
+      src: WAU_SOURCES, note: WAU_NOTE },
+    { key: 'cost', title: 'El costo de inferencia',
+      src: COST.src },
+    { key: 'gap', title: 'Brecha abierto–cerrado',
+      src: 'Stanford HAI, AI Index 2025. Ventaja del líder sobre el siguiente en Chatbot Arena, en puntos porcentuales.' },
+  ];
+  $('#charts').replaceChildren(...cards.map((card) => {
+    const figure = el('figure', 'chart-card');
+    figure.dataset.chart = card.key;
+    figure.append(el('h3', 'cc-title', card.title), el('div', 'cc-plot'));
+    figure.append(el('p', 'cc-src', card.src));
+    if (card.note) figure.append(el('p', 'cc-src cc-note', card.note));
+    return figure;
+  }));
+  drawAllCharts();
+}
+
+function addMark(svg, attrs, title, detail) {
+  const hit = svgEl('circle', { class: 'hit', cx: attrs.cx, cy: attrs.cy, r: (Number(attrs.r) || 5) + 6 });
+  hit.setAttribute('tabindex', '0');
+  const mark = svgEl('circle', attrs);
+  mark.setAttribute('pointer-events', 'none');
+  bindTooltip(hit, title, detail);
+  svg.append(hit, mark);
+}
+
+function drawAllCharts() {
+  $$('.chart-card').forEach((figure) => {
+    const host = $('.cc-plot', figure);
+    const width = Math.max(240, Math.round(host.clientWidth || 320));
+    CHART_DRAW[figure.dataset.chart](host, width, 230);
+  });
+}
+
+function drawParams(host, W, H) {
+  host.replaceChildren();
+  const m = { l: 58, r: 16, t: 14, b: 28 };
+  const plotW = W - m.l - m.r, plotH = H - m.t - m.b;
+  const x0 = 2017.6, x1 = 2026.95;
+  const xOf = (date) => m.l + ((yearFrac(date) - x0) / (x1 - x0)) * plotW;
+  const lo = Math.log10(80), hi = Math.log10(2.4e6);
+  const yOf = (value) => m.t + (1 - (Math.log10(value) - lo) / (hi - lo)) * plotH;
+  const svg = svgEl('svg', { class: 'chart', viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': 'Parámetros de modelos de lenguaje en escala logarítmica' });
+
+  for (const [value, label] of [[1e2, '100 M'], [1e3, '1 mil M'], [1e4, '10 mil M'], [1e5, '100 mil M'], [1e6, '1 billón']]) {
+    const y = yOf(value);
+    svg.append(svgEl('line', { x1: m.l, x2: W - m.r, y1: y, y2: y, class: 'grid' }));
+    svg.append(svgEl('text', { x: m.l - 8, y: y + 4, 'text-anchor': 'end', class: 'lbl-muted' }, label));
+  }
+  svg.append(svgEl('line', { x1: m.l, x2: W - m.r, y1: m.t + plotH, y2: m.t + plotH, class: 'axis' }));
+  for (const year of [2018, 2020, 2022, 2024, 2026]) {
+    svg.append(svgEl('text', { x: xOf(`${year}-01`), y: H - 8, 'text-anchor': 'middle', class: 'lbl-muted' }, String(year)));
+  }
+  PARAMS.forEach((point) => {
+    const cx = xOf(point.date), cy = yOf(point.m);
+    if (point.active) {
+      const ay = yOf(point.active);
+      svg.append(svgEl('line', { x1: cx, x2: cx, y1: cy, y2: ay, class: 'conn' }));
+      addMark(svg, { class: 'mark', cx, cy: ay, r: 6, fill: 'none', stroke: 'var(--ink3)', 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }, point.name, `${int(point.active)} M activos`);
     }
+    const attrs = point.reported
+      ? { class: 'mark', cx, cy, r: 6, fill: 'none', stroke: eraVar(point.era), 'stroke-width': 2.4, 'stroke-dasharray': '3 2' }
+      : { class: 'mark', cx, cy, r: 6, fill: eraVar(point.era), stroke: 'var(--bg)', 'stroke-width': 2 };
+    addMark(svg, attrs, point.name, `${int(point.m)} M${point.active ? ` · ${int(point.active)} M activos` : ''}${point.reported ? ' · autorreportado' : ''}`);
+  });
+  const first = PARAMS[0], last = PARAMS.at(-1);
+  svg.append(svgEl('text', { x: xOf(first.date) + 10, y: yOf(first.m) - 8, class: 'lbl halo' }, first.name));
+  svg.append(svgEl('text', { x: xOf(last.date) - 10, y: yOf(last.m) - 8, 'text-anchor': 'end', class: 'lbl halo' }, last.name));
+  host.append(svg);
+}
+
+function drawWau(host, W, H) {
+  host.replaceChildren();
+  const m = { l: 56, r: 16, t: 16, b: 28 };
+  const plotW = W - m.l - m.r, plotH = H - m.t - m.b;
+  const domainStart = 2022.7, domainEnd = 2026.6;
+  const xOf = (date) => m.l + ((yearFrac(date) - domainStart) / (domainEnd - domainStart)) * plotW;
+  const yOf = (value) => m.t + (1 - value / 1000) * plotH;
+  const svg = svgEl('svg', { class: 'chart', viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': 'Usuarios activos semanales de ChatGPT, en millones' });
+  for (const value of [0, 250, 500, 750, 1000]) {
+    const y = yOf(value);
+    svg.append(svgEl('line', { x1: m.l, x2: W - m.r, y1: y, y2: y, class: 'grid' }));
+    svg.append(svgEl('text', { x: m.l - 8, y: y + 4, 'text-anchor': 'end', class: 'lbl-muted' }, value === 0 ? '0' : `${int(value)} M`));
   }
-  const count2023 = stacks.get(2023) ?? 0;
-  svg.append(svgEl('text', { x: x(2023.5) + 12, y: base - 30, 'font-size': 12, 'font-weight': 600, fill: 'var(--ink)' }, `×${count2023}`));
-}
-
-function renderRoster() {
-  $('#roster').replaceChildren(...PLAYERS.map((player) => htmlEl('div', { className: 'player' }, [
-    htmlEl('span', { className: `y${player.year === 2023 ? ' y23' : ''}`, text: String(player.year) }),
-    htmlEl('div', {}, [htmlEl('b', { text: player.name }), htmlEl('span', { text: `${player.models} · ${player.country}` })]),
-  ])));
-}
-
-const gapCharts = [];
-function drawGaps() {
-  const container = $('#gaps');
-  container.replaceChildren();
-  gapCharts.length = 0;
-  const width = container.clientWidth || 480;
-  for (const group of Object.values(GAPS)) {
-    container.append(htmlEl('div', { className: 'gap-title', text: `${group.title} · ${group.before} → ${group.after}` }));
-    const compact = width < 520;
-    const rowHeight = compact ? 46 : 32, labelWidth = compact ? 34 : Math.min(150, width * 0.34), right = 40, top = 6;
-    const height = top + group.rows.length * rowHeight + 22;
-    const svg = svgEl('svg', { class: 'gap-svg', viewBox: `0 0 ${width} ${height}`, height });
-    const x = (value) => labelWidth + (value / group.max) * (width - labelWidth - right);
-    for (let tick = 0; tick <= group.max; tick += group.max / 4) {
-      svg.append(svgEl('line', { x1: x(tick), x2: x(tick), y1: top, y2: height - 20, stroke: 'var(--border)' }));
-      svg.append(svgEl('text', { x: x(tick), y: height - 6, 'font-size': 10.5, 'font-family': 'DM Mono', fill: 'var(--ink4)', 'text-anchor': 'middle' }, fmt(tick, 0)));
-    }
-    group.rows.forEach((row, index) => {
-      const rowCenter = top + index * rowHeight + rowHeight / 2;
-      const cy = compact ? rowCenter + 8 : rowCenter;
-      const rowGroup = svgEl('g', { class: 'row', tabindex: 0 });
-      rowGroup.append(svgEl('rect', { class: 'row-bg', x: 0, y: rowCenter - rowHeight / 2 + 2, width, height: rowHeight - 4, rx: 6, fill: 'transparent' }));
-      rowGroup.append(svgEl('text', { x: 4, y: compact ? cy - 12 : cy + 4, 'font-size': 13, fill: 'var(--ink2)' }, row.label));
-      const connector = svgEl('line', { class: 'connector', x1: x(row.after), x2: x(row.before), y1: cy, y2: cy, stroke: 'var(--border-strong)', 'stroke-width': 2 });
-      rowGroup.append(connector);
-      rowGroup.append(svgEl('circle', { cx: x(row.before), cy, r: 6, fill: 'var(--before)', stroke: 'var(--surface)', 'stroke-width': 2 }));
-      rowGroup.append(svgEl('text', { x: x(row.before) + 10, y: cy + 4, 'font-size': 11.5, 'font-family': 'DM Mono', fill: 'var(--ink3)' }, fmt(row.before)));
-      const afterDot = svgEl('circle', { cx: x(row.after), cy, r: 6, fill: 'var(--after)', stroke: 'var(--surface)', 'stroke-width': 2 });
-      const afterLabel = svgEl('text', { x: Math.max(x(row.after) - 10, 30), y: cy + 4, 'font-size': 11.5, 'font-family': 'DM Mono', 'font-weight': 500, fill: 'var(--ink)', 'text-anchor': 'end' }, fmt(row.after));
-      rowGroup.append(afterDot, afterLabel);
-      bindTooltip(rowGroup, `${fmt(row.before)} → ${fmt(row.after)}`, `${row.label} · se redujo ${fmt(row.before - row.after)}`);
-      svg.append(rowGroup);
-      gapCharts.push({ row, x, afterDot, afterLabel, connector });
-    });
-    container.append(svg);
+  svg.append(svgEl('line', { x1: m.l, x2: W - m.r, y1: m.t + plotH, y2: m.t + plotH, class: 'axis' }));
+  for (const year of [2023, 2024, 2025, 2026]) {
+    svg.append(svgEl('text', { x: xOf(`${year}-01`), y: H - 8, 'text-anchor': 'middle', class: 'lbl-muted' }, String(year)));
   }
+  const path = WAU.map((point, index) => `${index ? 'L' : 'M'}${xOf(point.date)} ${yOf(point.m)}`).join(' ');
+  svg.append(svgEl('path', { d: path, fill: 'none', stroke: eraVar(3), 'stroke-width': 2 }));
+  WAU.forEach((point) => {
+    addMark(svg, { class: 'mark', cx: xOf(point.date), cy: yOf(point.m), r: 5, fill: eraVar(3), stroke: 'var(--bg)', 'stroke-width': 2 }, `${int(point.m)} M usuarios semanales`, monthLabel(point.date));
+  });
+  const first = WAU[0], last = WAU.at(-1);
+  svg.append(svgEl('text', { x: xOf(first.date) + 8, y: yOf(first.m) - 9, class: 'lbl halo' }, `${int(first.m)} M · ${monthLabel(first.date)}`));
+  svg.append(svgEl('text', { x: xOf(last.date) - 8, y: yOf(last.m) - 10, 'text-anchor': 'end', class: 'lbl halo' }, `${int(last.m)} M · ${monthLabel(last.date)}`));
+  host.append(svg);
 }
 
-function playGaps() {
-  const duration = 1400, startTime = performance.now();
-  const ease = (t) => 1 - Math.pow(1 - t, 3);
-  function frame(now) {
-    const progress = ease(Math.min(1, (now - startTime) / duration));
-    for (const { row, x, afterDot, afterLabel, connector } of gapCharts) {
-      const value = row.before + (row.after - row.before) * progress;
-      afterDot.setAttribute('cx', x(value));
-      afterLabel.setAttribute('x', Math.max(x(value) - 10, 30));
-      afterLabel.textContent = fmt(value);
-      connector.setAttribute('x1', x(value));
-    }
-    if (progress < 1) requestAnimationFrame(frame);
+function drawCost(host) {
+  host.replaceChildren();
+  const lo = Math.log10(0.01), hi = Math.log10(100);
+  const pct = (value) => ((Math.log10(value) - lo) / (hi - lo)) * 100;
+  const word = (value) => `US$ ${fmt(value, value < 1 ? 2 : 0)}`;
+  const big = (value, label) => {
+    const node = el('div', 'cost-big', word(value));
+    node.append(el('small', null, label));
+    return node;
+  };
+  const pair = el('div', 'cost-pair');
+  pair.append(big(COST.from.value, COST.from.label), el('div', 'cost-arrow', '→'), big(COST.to.value, COST.to.label));
+  const track = (value, className, label) => {
+    const node = el('div', 'log-track');
+    node.setAttribute('tabindex', '0');
+    node.setAttribute('role', 'img');
+    node.setAttribute('aria-label', `${label}: ${word(value)} por millón de tokens`);
+    const bar = el('div', `log-bar ${className}`);
+    bar.style.width = `${pct(value)}%`;
+    node.append(bar);
+    bindTooltip(node, label, `${word(value)} por millón de tokens`);
+    return node;
+  };
+  const scale = el('div', 'log-scale');
+  for (const [value, label] of [[0.01, '0,01'], [0.1, '0,1'], [1, '1'], [10, '10'], [100, '100']]) {
+    const tick = el('span', null, label);
+    tick.style.left = `${pct(value)}%`;
+    scale.append(tick);
   }
-  requestAnimationFrame(frame);
+  const wrap = el('div', 'cost');
+  wrap.append(
+    pair,
+    el('p', 'log-row', 'antes'), track(COST.from.value, 'from', COST.from.label),
+    el('p', 'log-row', 'después'), track(COST.to.value, 'to', COST.to.label),
+    scale,
+    el('div', 'ratio', `${COST.ratio}× más barato · escala logarítmica (US$ por millón de tokens)`),
+  );
+  host.append(wrap);
 }
 
-/* ───────── 03 dials ───────── */
+function drawGap(host, W, H) {
+  host.replaceChildren();
+  const group = GAPS.arena;
+  const legend = el('div', 'legend-inline');
+  const beforeKey = el('span');
+  beforeKey.append(el('i', 'dot-before'), document.createTextNode(` antes (${group.before})`));
+  const afterKey = el('span');
+  afterKey.append(el('i', 'dot-after'), document.createTextNode(` después (${group.after})`));
+  legend.append(beforeKey, afterKey);
+
+  const svgH = H - 26;
+  const m = { l: 12, r: 26, t: 20, b: 26 };
+  const plotW = W - m.l - m.r, plotH = svgH - m.t - m.b;
+  const xOf = (value) => m.l + (value / group.max) * plotW;
+  const svg = svgEl('svg', { class: 'chart', viewBox: `0 0 ${W} ${svgH}`, width: W, height: svgH, role: 'img', 'aria-label': group.title });
+  for (let tick = 0; tick <= group.max; tick += 3) {
+    const x = xOf(tick);
+    svg.append(svgEl('line', { x1: x, x2: x, y1: m.t, y2: m.t + plotH, class: 'grid' }));
+    svg.append(svgEl('text', { x, y: svgH - 8, 'text-anchor': 'middle', class: 'lbl-muted' }, String(tick)));
+  }
+  const rowH = plotH / group.rows.length;
+  group.rows.forEach((row, index) => {
+    const cy = m.t + rowH * index + rowH * 0.72;
+    svg.append(svgEl('text', { x: m.l, y: cy - rowH * 0.42, class: 'lbl-strong' }, row.label));
+    svg.append(svgEl('line', { x1: xOf(row.after), x2: xOf(row.before), y1: cy, y2: cy, class: 'conn-thick' }));
+    addMark(svg, { class: 'mark', cx: xOf(row.before), cy, r: 6, fill: 'var(--ink3)', stroke: 'var(--bg)', 'stroke-width': 2 }, row.label, `antes: ${fmt(row.before)} % · ${group.before}`);
+    addMark(svg, { class: 'mark', cx: xOf(row.after), cy, r: 6.5, fill: eraVar(5), stroke: 'var(--bg)', 'stroke-width': 2 }, row.label, `después: ${fmt(row.after)} % · ${group.after}`);
+    svg.append(svgEl('text', { x: xOf(row.before), y: cy - 14, 'text-anchor': 'middle', class: 'lbl-muted halo' }, `${fmt(row.before)} %`));
+    svg.append(svgEl('text', { x: xOf(row.after), y: cy - 14, 'text-anchor': 'middle', class: 'lbl-strong halo' }, `${fmt(row.after)} %`));
+  });
+  host.append(legend, svg);
+}
+
+/* ───────── dials ───────── */
 function softmax(logits, temperature) {
   const scaled = logits.map((logit) => logit / temperature);
   const peak = Math.max(...scaled);
@@ -331,11 +449,11 @@ function renderBars() {
   const distribution = samplingDistribution();
   if (!bars.children.length) {
     for (const { word } of distribution) {
-      bars.append(htmlEl('div', { className: 'bar-row' }, [
-        htmlEl('span', { className: 'w', text: word }),
-        htmlEl('div', { className: 'bar-track' }, [htmlEl('div', { className: 'bar-fill' })]),
-        htmlEl('span', { className: 'v' }),
-      ]));
+      const row = el('div', 'bar-row');
+      const track = el('div', 'bar-track');
+      track.append(el('div', 'bar-fill'));
+      row.append(el('span', 'w', word), track, el('span', 'v'));
+      bars.append(row);
     }
   }
   [...bars.children].forEach((row, index) => {
@@ -357,66 +475,22 @@ function drawSamples() {
     return distribution.find(({ kept }) => kept).word;
   });
   $('#samples').replaceChildren(...samples.map((word, index) => {
-    const chip = htmlEl('span', { text: word });
+    const chip = el('span', null, word);
     chip.style.animationDelay = `${index * 30}ms`;
     return chip;
   }));
 }
 
-function renderEffort(level) {
-  const data = EFFORT.levels[level];
-  $$('.segmented button').forEach((button) => button.setAttribute('aria-checked', String(button.dataset.effort === level)));
-  $('#effort-q').textContent = EFFORT.question;
-  const thinking = data.thinking.length
-    ? data.thinking.map((line, index) => {
-      const item = htmlEl('li', { text: line });
-      item.style.animationDelay = `${index * 120}ms`;
-      return item;
-    })
-    : [htmlEl('li', { className: 'none', text: 'Sin pensamiento: responde de inmediato.' })];
-  $('#effort-thinking').replaceChildren(...thinking);
-  $('#effort-answer').replaceChildren(
-    document.createTextNode('Respuesta: '),
-    htmlEl('b', { text: data.answer }),
-    htmlEl('span', { className: data.correct ? 'ok' : 'bad', text: data.correct ? '✓ correcta' : '✗ incorrecta' }),
-  );
-  $('#effort-meter').style.width = `${Math.max(2, (data.tokens / 240) * 100)}%`;
-  $('#effort-meta').textContent = `≈ ${data.tokens} · ${data.seconds}`;
-}
-
-function renderContext() {
-  const container = $('#context');
-  const logMin = Math.log10(256), logMax = Math.log10(1_000_000);
-  container.replaceChildren(...CONTEXT.map((model) => {
-    const column = htmlEl('div', { className: 'col' });
-    column.dataset.height = `${8 + ((Math.log10(model.tokens) - logMin) / (logMax - logMin)) * 120}px`;
-    column.style.height = '0px';
-    const wrapper = htmlEl('div', { className: 'ctx-col', attrs: { tabindex: 0 } }, [
-      htmlEl('b', { text: model.label }), column, htmlEl('span', { text: model.name }), htmlEl('span', { text: String(model.year) }),
-    ]);
-    bindTooltip(wrapper, `${model.tokens.toLocaleString('es')} tokens`, `${model.name} · ${model.year}`);
-    return wrapper;
-  }));
-  const grow = () => $$('.col', container).forEach((column) => { column.style.height = column.dataset.height; });
-  if (!('IntersectionObserver' in window)) return grow();
-  const observer = new IntersectionObserver((entries) => {
-    if (entries.some((entry) => entry.isIntersecting)) { grow(); observer.disconnect(); }
-  }, { threshold: 0.3 });
-  observer.observe(container);
-}
-
 function initDials() {
   for (const id of ['t', 'p', 'k']) $(`#${id}`).addEventListener('input', renderBars);
   $('#sample').addEventListener('click', drawSamples);
-  $$('.segmented button').forEach((button) => button.addEventListener('click', () => renderEffort(button.dataset.effort)));
   renderBars();
   drawSamples();
-  renderEffort('medium');
-  renderContext();
 }
 
-/* ───────── 04 parrot ───────── */
+/* ───────── loro ───────── */
 const BEAM = { cx: 210, cy: 70, half: 150 };
+
 function drawBalance() {
   const svg = $('#balance');
   svg.replaceChildren();
@@ -440,9 +514,9 @@ function drawBalance() {
 function updateBalance() {
   const active = (side) => $$(`.evd[data-side="${side}"][aria-pressed="true"]`).length;
   const parrot = active('parrot'), beyond = active('beyond');
-  const angle = Math.max(-16, Math.min(16, (parrot - beyond) * -5));
-  const radians = (angle * Math.PI) / 180;
-  $('#balance .beam').style.transform = `rotate(${angle}deg)`;
+  const angleDeg = Math.max(-16, Math.min(16, (parrot - beyond) * -5));
+  const radians = (angleDeg * Math.PI) / 180;
+  $('#balance .beam').style.transform = `rotate(${angleDeg}deg)`;
   for (const pan of $$('#balance .pan')) {
     const direction = pan.dataset.side === 'parrot' ? -1 : 1;
     const dx = direction * BEAM.half * (Math.cos(radians) - 1);
@@ -475,24 +549,33 @@ function renderVerdict(parrot, beyond) {
     title = 'Empate parcial';
     body = `Llevas ${parrot + beyond} de ${total} evidencias. Activa el resto para ver el veredicto.`;
   }
-  $('#verdict').replaceChildren(
-    htmlEl('div', {}, [htmlEl('div', { className: 'vk', text: 'Veredicto' }), htmlEl('div', { className: 'vt', text: title })]),
-    htmlEl('p', { text: body }),
-  );
+  const head = el('div');
+  head.append(el('p', 'vk', 'Veredicto'), el('p', 'vt', title));
+  $('#verdict').replaceChildren(head, el('p', null, body));
 }
 
 function initParrot() {
   for (const side of ['parrot', 'beyond']) {
     $(`#ev-${side}`).replaceChildren(...EVIDENCE.filter((item) => item.side === side).map((item) => {
-      const children = [htmlEl('div', { className: 't', text: item.title }), htmlEl('div', { className: 'm', text: item.meta }), htmlEl('p', { text: item.text })];
-      const card = htmlEl('button', { className: 'evd', attrs: { type: 'button', 'aria-pressed': 'false', 'data-side': side } }, children);
+      const card = el('button', 'evd');
+      card.type = 'button';
+      card.dataset.side = side;
+      card.setAttribute('aria-pressed', 'false');
+      card.append(el('div', 't', item.title), el('div', 'm', item.meta), el('p', null, item.text));
       card.addEventListener('click', (event) => {
         if (event.target.closest('a')) return;
         card.setAttribute('aria-pressed', String(card.getAttribute('aria-pressed') !== 'true'));
         updateBalance();
       });
-      const wrapper = htmlEl('div', {}, [card]);
-      if (item.src) wrapper.append(htmlEl('a', { className: 'evd-src', text: 'fuente ↗', attrs: { href: item.src, target: '_blank', rel: 'noopener' } }));
+      const wrapper = el('div');
+      wrapper.append(card);
+      if (item.src) {
+        const link = el('a', 'evd-src', 'fuente ↗');
+        link.href = item.src;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        wrapper.append(link);
+      }
       return wrapper;
     }));
   }
@@ -506,38 +589,61 @@ function initParrot() {
   drawBalance();
 }
 
-/* ───────── footer + nav ───────── */
+/* ───────── footer ───────── */
 function renderSources() {
-  $('#sources').replaceChildren(...SOURCES.map(([label, href]) =>
-    htmlEl('li', {}, [htmlEl('a', { text: label, attrs: { href, target: '_blank', rel: 'noopener' } })])));
+  $('#sources').replaceChildren(...SOURCES.map(([label, href]) => {
+    const link = el('a', null, label);
+    link.href = href;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    const item = el('li');
+    item.append(link);
+    return item;
+  }));
 }
 
-function initNavHighlight() {
-  if (!('IntersectionObserver' in window)) return;
-  const links = $$('.nav-links a');
-  const observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      links.forEach((link) => link.classList.toggle('is-current', link.getAttribute('href') === `#${entry.target.id}`));
-    }
-  }, { rootMargin: '-45% 0px -50% 0px' });
-  $$('main section[id]').forEach((section) => observer.observe(section));
+/* ───────── boot ───────── */
+function setTopbarHeight() {
+  document.documentElement.style.setProperty('--topbar-h', `${Math.round($('.topbar').offsetHeight)}px`);
 }
 
-function redrawCharts() {
-  drawRail();
-  drawPlayersAxis();
-  drawGaps();
+function initTimeline() {
+  $$('.filters .chip').forEach((chip) => chip.addEventListener('click', () => {
+    filter = chip.dataset.filter;
+    $$('.filters .chip').forEach((other) => {
+      const active = other === chip;
+      other.classList.toggle('is-active', active);
+      other.setAttribute('aria-pressed', String(active));
+    });
+    applyFilter();
+    closePop();
+  }));
+  renderTimeline();
 }
 
-initTheme();
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && openAnchor) {
+    const dot = $('.tl-dot', openAnchor);
+    closePop();
+    dot.focus();
+  }
+});
+document.addEventListener('pointerdown', (event) => {
+  if (openAnchor && !openAnchor.contains(event.target)) closePop();
+});
+
 initTimeline();
-drawPlayersAxis();
-renderRoster();
-drawGaps();
-$('#gap-play').addEventListener('click', playGaps);
+renderEras();
+renderCharts();
 initDials();
 initParrot();
 renderSources();
-initNavHighlight();
-onResize(redrawCharts);
+setTopbarHeight();
+
+const narrowQuery = window.matchMedia('(max-width: 719.98px)');
+narrowQuery.addEventListener('change', renderTimeline);
+onResize(() => {
+  setTopbarHeight();
+  renderTimeline();
+  drawAllCharts();
+});

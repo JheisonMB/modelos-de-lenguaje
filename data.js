@@ -1,5 +1,5 @@
-// Content of the infographic. Edit here; app.js only renders.
-// Dates are 'YYYY-MM' (day optional) and drive the timeline axis.
+// Contenido de la infografía. Edita aquí; app.js solo dibuja.
+// Las fechas son 'YYYY-MM' (día opcional) y guían el eje de la línea de tiempo.
 
 export const ERAS = [
   { id: 1, name: 'Los cimientos', years: '2017 – 2019', from: '2017-01', to: '2020-01',
@@ -15,13 +15,6 @@ export const ERAS = [
   { id: 6, name: 'De responder a ejecutar', years: '2026', from: '2026-01', to: '2026-12',
     thesis: 'El foco pasa al trabajo autónomo: tareas de horas, programación y uso del computador.' },
 ];
-
-export const TAGS = {
-  open: 'abierto',
-  closed: 'cerrado',
-  reasoning: 'razonador',
-  multimodal: 'multimodal',
-};
 
 export const EVENTS = [
   { era: 1, date: '2017-06', label: 'jun 2017', key: true, title: 'Attention Is All You Need', who: 'Vaswani et al. · Google',
@@ -147,18 +140,6 @@ export const EVENTS = [
     tags: ['closed', 'reasoning'], src: 'https://news.bgov.com/artificial-intelligence/openai-rolls-out-gpt-6-astra-model-with-cyber-guardrails-1' },
 ];
 
-export const PLAYERS = [
-  { year: 2010, name: 'Google DeepMind', models: 'Gemini · Gemma', country: 'EE. UU. / R. U.' },
-  { year: 2015, name: 'OpenAI', models: 'GPT · o-series · gpt-oss', country: 'EE. UU.' },
-  { year: 2021, name: 'Anthropic', models: 'Claude', country: 'EE. UU.' },
-  { year: 2023, name: 'Meta', models: 'Llama (primer LLM abierto en 2023)', country: 'EE. UU.' },
-  { year: 2023, name: 'Mistral AI', models: 'Mistral · Mixtral', country: 'Francia' },
-  { year: 2023, name: 'xAI', models: 'Grok', country: 'EE. UU.' },
-  { year: 2023, name: 'DeepSeek', models: 'V3 · R1 · V4', country: 'China' },
-  { year: 2023, name: 'Alibaba · Qwen', models: 'Qwen (abierto desde 2023)', country: 'China' },
-  { year: 2023, name: 'Moonshot AI', models: 'Kimi', country: 'China' },
-];
-
 // Stanford HAI AI Index 2025, technical performance chapter.
 export const GAPS = {
   arena: {
@@ -169,45 +150,15 @@ export const GAPS = {
       { label: 'Top 1 vs top 10', before: 11.9, after: 5.4 },
     ],
   },
-  country: {
-    title: 'EE. UU. vs China · ventaja en benchmarks (puntos porcentuales)',
-    before: 'fin 2023', after: 'fin 2024', max: 32,
-    rows: [
-      { label: 'MMLU (saber)', before: 17.5, after: 0.3 },
-      { label: 'MMMU (multimodal)', before: 13.5, after: 8.1 },
-      { label: 'MATH', before: 24.3, after: 1.6 },
-      { label: 'HumanEval (código)', before: 31.6, after: 3.7 },
-    ],
-  },
 };
 
-// Illustrative logits for "El cielo es ___".
+// Logits ilustrativos para «El cielo es ___».
 export const CANDIDATES = [
   ['azul', 4.0], ['gris', 2.6], ['despejado', 2.2], ['infinito', 1.2],
   ['inmenso', 1.0], ['oscuro', 0.8], ['rojo', 0.3], ['verde', 0.2],
 ];
 
-export const EFFORT = {
-  question: '¿Cuántas letras «r» hay en «ferrocarril»?',
-  levels: {
-    low: { tokens: 0, seconds: '~1 s', answer: '3', correct: false,
-      thinking: [] },
-    medium: { tokens: 60, seconds: '~4 s', answer: '3', correct: false,
-      thinking: ['La palabra tiene «rr» dos veces…', 'f-e-rr-o-c-a-rr-i-l… cuento las r: 1, 2, 3.'] },
-    high: { tokens: 240, seconds: '~15 s', answer: '4', correct: true,
-      thinking: ['Deletreo letra por letra: f · e · r · r · o · c · a · r · r · i · l.', 'Marco cada r: posición 3, 4, 8 y 9.', 'Verifico: «ferro» aporta 2, «carril» aporta 2.', 'Total: 4.'] },
-  },
-};
-
-export const CONTEXT = [
-  { name: 'GPT-1', year: 2018, tokens: 512, label: '512' },
-  { name: 'GPT-3', year: 2020, tokens: 2048, label: '2 K' },
-  { name: 'GPT-4', year: 2023, tokens: 32768, label: '32 K' },
-  { name: 'Claude 2.1', year: 2023, tokens: 200000, label: '200 K' },
-  { name: 'Gemini 1.5', year: 2024, tokens: 1000000, label: '1 M' },
-];
-
-// side: 'parrot' supports the 2021 thesis; 'beyond' argues against it.
+// side: 'parrot' apoya la tesis de 2021; 'beyond' argumenta en contra.
 export const EVIDENCE = [
   { side: 'beyond', title: 'Othello-GPT', meta: 'Li et al. · 2023', src: 'https://arxiv.org/abs/2210.13382',
     text: 'Entrenado solo con secuencias de jugadas, el modelo forma una representación interna del tablero que se puede leer y editar.' },
@@ -239,4 +190,41 @@ export const SOURCES = [
   ['Anthropic (2025) Reasoning models don\'t always say what they think', 'https://www.anthropic.com/research/reasoning-models-dont-say-think'],
   ['Shojaee et al. (2025) The Illusion of Thinking', 'https://arxiv.org/abs/2506.06941'],
   ['Stanford HAI (2025) AI Index Report', 'https://hai.stanford.edu/ai-index/2025-ai-index-report/technical-performance'],
+  ['TechCrunch (2026) ChatGPT reaches 900M weekly active users', 'https://techcrunch.com/2026/02/27/chatgpt-reaches-900m-weekly-active-users'],
+  ['Engadget (2025) ChatGPT reaches 400M weekly active users', 'https://engadget.com/ai/chatgpt-reaches-400m-weekly-active-users-203635884.html'],
+  ['Tech.eu (2025) ChatGPT has more than 800M weekly active users', 'https://tech.eu/2025/10/07/chatgpt-has-more-than-800m-weekly-active-users-says-altman/'],
+  ['WisdomTree (2025) 280x cheaper: the real AI revolution is accessibility', 'https://www.wisdomtree.com/us/insights/blog/280x-cheaper-the-real-ai-revolution-is-accessibility'],
 ];
+
+// Parámetros en millones (M). active = activos en mezclas de expertos. reported = autorreportado.
+export const PARAMS = [
+  { name: 'GPT-1', date: '2018-06', m: 117, era: 1 },
+  { name: 'BERT-large', date: '2018-10', m: 340, era: 1 },
+  { name: 'GPT-2', date: '2019-02', m: 1500, era: 1 },
+  { name: 'GPT-3', date: '2020-05', m: 175000, era: 2 },
+  { name: 'Chinchilla', date: '2022-03', m: 70000, era: 2 },
+  { name: 'LLaMA', date: '2023-02', m: 65000, era: 3 },
+  { name: 'Llama 2', date: '2023-07', m: 70000, era: 3 },
+  { name: 'Mistral 7B', date: '2023-09', m: 7300, era: 3 },
+  { name: 'Llama 3.1 405B', date: '2024-07', m: 405000, era: 4 },
+  { name: 'DeepSeek-V3', date: '2024-12', m: 671000, active: 37000, era: 4 },
+  { name: 'Kimi K2', date: '2025-07', m: 1000000, active: 32000, era: 5 },
+  { name: 'DeepSeek V4', date: '2026-04', m: 1600000, era: 6, reported: true },
+];
+
+// Usuarios activos semanales de ChatGPT, en millones. Fuentes en WAU_SOURCES.
+export const WAU = [
+  { date: '2023-11', m: 100 }, { date: '2024-08', m: 200 }, { date: '2024-12', m: 300 },
+  { date: '2025-02', m: 400 }, { date: '2025-03', m: 500 }, { date: '2025-08', m: 700 },
+  { date: '2025-10', m: 800 }, { date: '2026-02', m: 900 },
+];
+export const WAU_SOURCES = 'Fuentes: a16z vía TechCrunch; Engadget (400 M); OpenAI DevDay, oct 2025 (800 M); TechCrunch, feb 2026 (900 M).';
+export const WAU_NOTE = 'Aparte, no es la métrica semanal de la línea: ~100 M de usuarios en ~2 meses (estimación UBS, cifra mensual).';
+
+// Costo de inferencia, US$ por millón de tokens a nivel GPT-3.5 en MMLU.
+export const COST = {
+  from: { value: 20, label: 'nov 2022 · nivel GPT-3.5 en MMLU' },
+  to: { value: 0.07, label: 'oct 2024 · Gemini-1.5-Flash-8B' },
+  ratio: 280,
+  src: 'Stanford HAI, AI Index 2025 (datos de Epoch AI y Artificial Analysis).',
+};
