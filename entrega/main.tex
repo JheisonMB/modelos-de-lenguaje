@@ -1,0 +1,59 @@
+% Documento de entrega — infografía interactiva sobre modelos de lenguaje.
+\documentclass[a4paper,10pt]{article}
+
+\usepackage[spanish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,top=2.4cm,bottom=2.4cm,left=2.4cm,right=2.4cm]{geometry}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[pdfauthor={Jheison Martinez Bolivar},pdftitle={Documento de entrega — Infografía interactiva sobre modelos de lenguaje}]{hyperref}
+\usepackage[compact]{titlesec}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+
+\newcommand{\linkcolor}{blue!55!black}
+\hypersetup{urlcolor=blue!55!black}
+
+\begin{document}
+% ─── Ficha de portada ───────────────────────────────────────────────────────
+\begin{center}
+\setlength{\fboxsep}{14pt}
+\fcolorbox{gray}{gray!6}{%
+\begin{minipage}{0.82\linewidth}
+\centering
+{\footnotesize\scshape documento de entrega}\\[6pt]
+{\Large\bfseries Infografía interactiva}\\[2pt]
+{\large modelos de lenguaje, 2017--2026}\\[10pt]
+{\bfseries Jheison Martinez Bolivar}\\[2pt]
+{\footnotesize octubre de 2026}\\[10pt]
+{\large\href{https://jheisonmb.github.io/modelos-de-lenguaje/}{jheisonmb.github.io/modelos-de-lenguaje}}
+\end{minipage}}
+\end{center}
+
+\vspace{1.5em}
+
+\section*{El enlace}
+La infografía está publicada como GitHub Pages en
+\href{https://jheisonmb.github.io/modelos-de-lenguaje/}{jheisonmb.github.io/modelos-de-lenguaje};
+el código fuente de la infografía está en el repositorio \url{https://github.com/JheisonMB/modelos-de-lenguaje}.
+
+\section*{Justificación de las herramientas elegidas}
+
+\subsection*{GitHub Pages}
+Uno de los criterios era que la entrega fuera explorable, no estática: filtros,
+fichas, tooltips, simulador de muestreo y balanza de evidencia. Un PDF puede
+mostrar el diseño, pero no responder al cursor ni al foco del teclado.
+
+\medskip
+
+GitHub Pages permite publicar un sitio estático sin backend ni build, directamente
+desde el repositorio; la infografía misma es open source: su código vive ahí.
+
+\subsection*{\href{https://univerlab.org/texforge}{texforge}}
+Para este documento se usó texforge, un compilador LaTeX independiente que compila
+a PDF en un comando, con linter y corrector ortográfico en español incluidos. El resultado es un PDF con fuentes embebidas
+que el receptor abre sin instalar nada.
+
+\end{document}

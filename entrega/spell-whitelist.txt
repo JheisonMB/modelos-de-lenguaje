@@ -1,0 +1,4 @@
+# Palabras que el corrector ortográfico acepta en esta plantilla
+# (claves de Graphviz y valores de ejemplo). Una palabra por línea.
+rankdir
+lr

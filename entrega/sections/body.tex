@@ -1,0 +1,78 @@
+% The body of the document. Each section demonstrates one feature once:
+% one equation, one booktabs table, one Graphviz diagram and one code block.
+% Replace every sample paragraph and every % comment with your own content.
+
+% --- Introduction -----------------------------------------------------------
+% State the problem, why it matters and what this document contributes.
+\section{Introduction}
+This document is a working example of the \textit{general} template. It shows
+one use of each feature of this template, so that you can keep the parts you
+need and replace the rest. The background material is summarised in a
+textbook reference~\cite{example2}, and a short online note covers the same
+topic~\cite{example3}. Replace this paragraph with your own introduction.
+
+% --- Method -----------------------------------------------------------------
+% Describe the model, the procedure or the algorithm that you follow.
+\section{Method}
+The sample method estimates a quantity from repeated measurements. Its
+definition is the arithmetic mean of the observations,
+\begin{equation}
+  \bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i .
+  \label{eq:mean}
+\end{equation}
+% Replace the equation above with the formula central to your work.
+Every result in the next section is computed from this quantity.
+
+% --- Results ----------------------------------------------------------------
+% Report the main numbers first and explain what they mean afterwards.
+\section{Results}
+Table~\ref{tab:runs} lists three illustrative runs and the value and error
+measured for each one.
+% Replace the values, the caption and the label with your own measurements.
+\begin{table}[H]
+  \centering
+  \caption{Illustrative runs, with the measured value and error}
+  \label{tab:runs}
+  \begin{tabular}{lcc}
+    \toprule
+    Run & Value & Error \\
+    \midrule
+    Baseline & 1.00 & 0.05 \\
+    Variant A & 1.15 & 0.07 \\
+    Variant B & \textbf{1.24} & 0.06 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The direction of the calculation is often clearer in a drawing. The diagram
+below is drawn from its source when the document is built, so the project
+carries no image file.
+% Replace the graph with your own; keep style= and the caption. The
+% rankdir key is accepted by spell-whitelist.txt in the project root.
+\begin{graphviz}[style=editorial, pos=H, width=0.62\linewidth, caption={From a measured run to its reported value}]
+  digraph G {
+    rankdir=LR
+    run -> sample
+    sample -> value
+  }
+\end{graphviz}
+
+% --- Implementation ---------------------------------------------------------
+% Show the few lines of code that a reader needs to reproduce the result.
+\section{Implementation}
+% Replace the listing with your own code. Keep it short (at most twelve
+% lines) and set lang= to the language of the block.
+\begin{code}[lang=python]
+def mean(values):
+    """Return the arithmetic mean of the values."""
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+\end{code}
+
+% --- Conclusion -------------------------------------------------------------
+% Restate the main result, name the limitations and the next step.
+\section{Conclusion}
+Replace this closing with a short summary: what the results show, which
+limitations remain and what should be done next. The sample method follows
+the framework described in~\cite{example}.
